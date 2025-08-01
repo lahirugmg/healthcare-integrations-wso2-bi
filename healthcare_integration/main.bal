@@ -280,22 +280,44 @@ function processSingleReminder(DueReminder reminder) returns error? {
     // Send SMS via Twilio
     TwilioConfig twilioConfig = getTwilioConfig();
 
+    log:printInfo(message);
+    
     twilio:CreateMessageRequest smsRequest = {
         To: reminder.phone_e164,
         From: twilioConfig.fromNumber,
         Body: message
     };
 
-    twilio:Message smsResponse = check twilioClient->createMessage(smsRequest);
 
-    // Extract message SID for logging - using safe optional access
+    twilio:Message|error smsResponse = twilioClient->createMessage(smsRequest);
+        
+
+    if smsResponse is error {
+        string errorMessage = "Failed to send SMS: " + smsResponse.message();
+        log:printError("SMS sending failed - To: " + reminder.phone_e164 + ", Error: " + smsResponse.message());
+        return error(errorMessage);
+    }
+    
     string? messageSid = smsResponse?.sid;
+    string? messageStatus = smsResponse?.status;
+    
+    // Log successful SMS sending
+    if messageSid is string {
+        log:printInfo("SMS sent successfully - Message SID: " + messageSid + ", To: " + reminder.phone_e164);
+    }
+    
+    if messageStatus is string {
+        log:printInfo("SMS Status: " + messageStatus + " for Message SID: " + (messageSid ?: "N/A"));
+    }
+    
+    log:printInfo("SMS sending process completed successfully");
+    
 
     // Update schedule status to SENT and calculate next dose time
-    check updateReminderSuccess(reminder, messageSid);
+    // check updateReminderSuccess(reminder, messageSid);
 
     // Log successful attempt
-    check logReminderAttempt(reminder.schedule_id, "SUCCESS", messageSid, ());
+    // check logReminderAttempt(reminder.schedule_id, "SUCCESS", messageSid, ());
 
     log:printInfo(string `Successfully sent SMS reminder for schedule_id: ${reminder.schedule_id}, message_sid: ${messageSid ?: "unknown"}`);
 }
