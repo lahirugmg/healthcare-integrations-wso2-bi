@@ -2,7 +2,7 @@ import ballerina/ftp;
 import ballerina/io;
 
 public function main() returns error? {
-    io:println("Starting clinician contact data processing from FTP location...");
+    io:println("Starting clinician contact data processing and database insertion...");
 
     // FTP client configuration with credentials from Config.toml
     ftp:ClientConfiguration ftpConfig = {
@@ -21,6 +21,7 @@ public function main() returns error? {
 
     io:println("FTP Server: localhost:2121");
     io:println(string `Directory: ${ftpDirectory}`);
+    io:println(string `Database: ${dbName} on ${dbHost}:${dbPort}`);
     io:println("----------------------------------------");
 
     // List files in the FTP directory
@@ -47,9 +48,11 @@ public function main() returns error? {
 
     io:println("----------------------------------------");
 
-    // Process each JSON file
-    int successCount = 0;
-    int errorCount = 0;
+    // Process each JSON file and insert data into database
+    int totalSuccessCount = 0;
+    int totalErrorCount = 0;
+    int filesProcessed = 0;
+    int filesWithErrors = 0;
 
     foreach ftp:FileInfo fileInfo in jsonFiles {
         string fileName = fileInfo.name;
@@ -61,22 +64,29 @@ public function main() returns error? {
         if result.success {
             io:println(string `✓ Successfully loaded: ${result.fileName}`);
 
-            // Process clinician data specifically
-            error? clinicianProcessResult = processClinicianData(result.content);
+            // Insert clinician data into database
+            InsertionResult insertionResult = insertClinicianData(result.content, fileName);
 
-            if clinicianProcessResult is error {
-                io:println(string `✗ Failed to process clinician data: ${clinicianProcessResult.message()}`);
-                errorCount += 1;
+            if insertionResult.errorCount > 0 {
+                io:println(string `✗ Database insertion errors for file: ${result.fileName}`);
+                foreach string errorMsg in insertionResult.errors {
+                    io:println(string `  Error: ${errorMsg}`);
+                }
+                filesWithErrors += 1;
             } else {
-                io:println(string `✓ Successfully processed clinician data from: ${result.fileName}`);
-                successCount += 1;
+                io:println(string `✓ Successfully inserted all records from: ${result.fileName}`);
+                filesProcessed += 1;
             }
+
+            totalSuccessCount += insertionResult.successCount;
+            totalErrorCount += insertionResult.errorCount;
+
         } else {
             io:println(string `✗ Failed to load: ${result.fileName}`);
             string? errorMessage = result.errorMessage;
             string errorMsg = errorMessage ?: "Unknown error";
             io:println(string `Error: ${errorMsg}`);
-            errorCount += 1;
+            filesWithErrors += 1;
         }
 
         io:println("========================================");
@@ -85,7 +95,15 @@ public function main() returns error? {
     // Print summary
     io:println("PROCESSING SUMMARY:");
     io:println(string `Total JSON files: ${jsonFileCount}`);
-    io:println(string `Successfully processed: ${successCount}`);
-    io:println(string `Failed to process: ${errorCount}`);
-    io:println("Clinician data processing completed.");
+    io:println(string `Files successfully processed: ${filesProcessed}`);
+    io:println(string `Files with errors: ${filesWithErrors}`);
+    io:println(string `Total clinician records inserted: ${totalSuccessCount}`);
+    io:println(string `Total insertion errors: ${totalErrorCount}`);
+    io:println("Clinician data processing and database insertion completed.");
+
+    // Close database connection
+    error? closeResult = dbClient.close();
+    if closeResult is error {
+        io:println(string `Warning: Failed to close database connection: ${closeResult.message()}`);
+    }
 }

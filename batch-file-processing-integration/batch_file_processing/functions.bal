@@ -1,6 +1,8 @@
 import ballerina/ftp;
 import ballerina/io;
 import ballerina/lang.value as value;
+import ballerina/time;
+import ballerina/sql;
 
 // Function to check if a file is a JSON file
 public function isJsonFile(string fileName) returns boolean {
@@ -24,54 +26,90 @@ public function convertBytesToString(stream<byte[] & readonly, io:Error?> byteSt
     return string:fromBytes(bytes);
 }
 
-// Function to process clinician data and print each object
-public function processClinicianData(json jsonContent) returns error? {
+// Function to convert Clinician to ClinicianContact for database insertion
+public function convertToClinicianContact(Clinician clinician, string sourceFile) returns ClinicianContact {
+    time:Utc currentTime = time:utcNow();
+    string currentTimestamp = time:utcToString(currentTime);
+    
+    return {
+        clinician_id: clinician.clinicianId,
+        npi: clinician.npi,
+        first_name: clinician.firstName,
+        middle_name: clinician.middleName,
+        last_name: clinician.lastName,
+        email: clinician.email,
+        phone_mobile: clinician.phoneMobile,
+        phone_office: clinician.phoneOffice,
+        pager: clinician.pager,
+        department: clinician.department,
+        specialty: clinician.specialty,
+        facility_code: clinician.facilityCode,
+        facility_name: clinician.facilityName,
+        status: clinician.status,
+        effective_from: clinician.effectiveFrom,
+        updated_at: clinician.updatedAt,
+        source_file: sourceFile,
+        last_ingested_at: currentTimestamp
+    };
+}
+
+// Function to insert clinician contact data into MySQL database
+public function insertClinicianData(json jsonContent, string sourceFile) returns InsertionResult {
+    InsertionResult result = {
+        successCount: 0,
+        errorCount: 0,
+        errors: []
+    };
+    
     // Convert JSON to Clinician array
     Clinician[]|error clinicians = jsonContent.cloneWithType();
     
     if clinicians is error {
-        return error(string `Failed to parse clinician data: ${clinicians.message()}`);
+        string errorMsg = string `Failed to parse clinician data: ${clinicians.message()}`;
+        result.errors.push(errorMsg);
+        result.errorCount = 1;
+        return result;
     }
     
     int clinicianCount = clinicians.length();
-    io:println(string `Found ${clinicianCount} clinician records`);
-    io:println("========================================");
+    io:println(string `Found ${clinicianCount} clinician records to insert`);
     
-    // Process and print each clinician object
-    int index = 1;
+    // Process and insert each clinician record
     foreach Clinician clinician in clinicians {
-        io:println(string `Clinician #${index}:`);
-        io:println(string `  Clinician ID: ${clinician.clinicianId}`);
-        io:println(string `  NPI: ${clinician.npi}`);
+        ClinicianContact contactData = convertToClinicianContact(clinician, sourceFile);
         
-        string? middleName = clinician.middleName;
-        string fullName = middleName is string ? 
-            string `${clinician.firstName} ${middleName} ${clinician.lastName}` : 
-            string `${clinician.firstName} ${clinician.lastName}`;
-        io:println(string `  Full Name: ${fullName}`);
+        // Prepare INSERT statement
+        sql:ParameterizedQuery insertQuery = `
+            INSERT INTO clinician_contact (
+                clinician_id, npi, first_name, middle_name, last_name, email,
+                phone_mobile, phone_office, pager, department, specialty,
+                facility_code, facility_name, status, effective_from, updated_at,
+                source_file, last_ingested_at
+            ) VALUES (
+                ${contactData.clinician_id}, ${contactData.npi}, ${contactData.first_name},
+                ${contactData.middle_name}, ${contactData.last_name}, ${contactData.email},
+                ${contactData.phone_mobile}, ${contactData.phone_office}, ${contactData.pager},
+                ${contactData.department}, ${contactData.specialty}, ${contactData.facility_code},
+                ${contactData.facility_name}, ${contactData.status}, ${contactData.effective_from},
+                ${contactData.updated_at}, ${contactData.source_file}, ${contactData.last_ingested_at}
+            )
+        `;
         
-        io:println(string `  Email: ${clinician.email}`);
-        io:println(string `  Mobile Phone: ${clinician.phoneMobile}`);
-        io:println(string `  Office Phone: ${clinician.phoneOffice}`);
+        // Execute INSERT statement
+        sql:ExecutionResult|sql:Error insertResult = dbClient->execute(insertQuery);
         
-        string? pager = clinician.pager;
-        if pager is string {
-            io:println(string `  Pager: ${pager}`);
+        if insertResult is sql:Error {
+            string errorMsg = string `Failed to insert clinician ${contactData.clinician_id}: ${insertResult.message()}`;
+            result.errors.push(errorMsg);
+            result.errorCount += 1;
+            io:println(string `✗ ${errorMsg}`);
+        } else {
+            result.successCount += 1;
+            io:println(string `✓ Inserted clinician: ${contactData.clinician_id} (${contactData.first_name} ${contactData.last_name})`);
         }
-        
-        io:println(string `  Department: ${clinician.department}`);
-        io:println(string `  Specialty: ${clinician.specialty}`);
-        io:println(string `  Facility Code: ${clinician.facilityCode}`);
-        io:println(string `  Facility Name: ${clinician.facilityName}`);
-        io:println(string `  Status: ${clinician.status}`);
-        io:println(string `  Effective From: ${clinician.effectiveFrom}`);
-        io:println(string `  Updated At: ${clinician.updatedAt}`);
-        io:println("----------------------------------------");
-        
-        index += 1;
     }
     
-    return;
+    return result;
 }
 
 // Function to process a single JSON file
