@@ -26,10 +26,89 @@ public function convertBytesToString(stream<byte[] & readonly, io:Error?> byteSt
     return string:fromBytes(bytes);
 }
 
+// Function to pad number with leading zeros
+public function padWithZeros(int number, int width) returns string {
+    string numStr = number.toString();
+    int padding = width - numStr.length();
+    
+    if padding <= 0 {
+        return numStr;
+    }
+    
+    string paddedStr = "";
+    int i = 0;
+    while i < padding {
+        paddedStr = paddedStr + "0";
+        i = i + 1;
+    }
+    
+    return paddedStr + numStr;
+}
+
+// Function to format decimal seconds
+public function formatSeconds(decimal? seconds) returns string {
+    decimal secondValue = seconds ?: 0.0d;
+    int wholePart = <int>secondValue;
+    return padWithZeros(wholePart, 2);
+}
+
+// Function to convert ISO 8601 datetime to MySQL compatible format
+public function formatDateTimeForMySQL(string dateTimeString) returns string|error {
+    // Handle date-only format (YYYY-MM-DD)
+    if dateTimeString.length() == 10 && !dateTimeString.includes("T") {
+        return dateTimeString + " 00:00:00";
+    }
+    
+    // Handle ISO 8601 datetime format
+    time:Utc|time:Error utcTime = time:utcFromString(dateTimeString);
+    
+    if utcTime is time:Error {
+        // If parsing fails, try to handle it as a simple date
+        return dateTimeString.length() == 10 ? dateTimeString + " 00:00:00" : dateTimeString;
+    }
+    
+    time:Civil|time:Error civilTime = time:utcToCivil(utcTime);
+    
+    if civilTime is time:Error {
+        return dateTimeString;
+    }
+    
+    // Format as MySQL datetime: YYYY-MM-DD HH:MM:SS
+    string year = civilTime.year.toString();
+    string month = padWithZeros(civilTime.month, 2);
+    string day = padWithZeros(civilTime.day, 2);
+    string hour = padWithZeros(civilTime.hour, 2);
+    string minute = padWithZeros(civilTime.minute, 2);
+    string second = formatSeconds(civilTime.second);
+    
+    string formattedDateTime = string `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+    
+    return formattedDateTime;
+}
+
 // Function to convert Clinician to ClinicianContact for database insertion
-public function convertToClinicianContact(Clinician clinician, string sourceFile) returns ClinicianContact {
+public function convertToClinicianContact(Clinician clinician, string sourceFile) returns ClinicianContact|error {
     time:Utc currentTime = time:utcNow();
-    string currentTimestamp = time:utcToString(currentTime);
+    time:Civil|time:Error civilResult = time:utcToCivil(currentTime);
+    
+    if civilResult is time:Error {
+        return error("Failed to convert current time to civil time");
+    }
+    
+    time:Civil currentCivil = civilResult;
+    
+    string currentYear = currentCivil.year.toString();
+    string currentMonth = padWithZeros(currentCivil.month, 2);
+    string currentDay = padWithZeros(currentCivil.day, 2);
+    string currentHour = padWithZeros(currentCivil.hour, 2);
+    string currentMinute = padWithZeros(currentCivil.minute, 2);
+    string currentSecond = formatSeconds(currentCivil.second);
+    
+    string currentTimestamp = string `${currentYear}-${currentMonth}-${currentDay} ${currentHour}:${currentMinute}:${currentSecond}`;
+    
+    // Format datetime fields for MySQL compatibility
+    string formattedEffectiveFrom = check formatDateTimeForMySQL(clinician.effectiveFrom);
+    string formattedUpdatedAt = check formatDateTimeForMySQL(clinician.updatedAt);
     
     return {
         clinician_id: clinician.clinicianId,
@@ -46,8 +125,8 @@ public function convertToClinicianContact(Clinician clinician, string sourceFile
         facility_code: clinician.facilityCode,
         facility_name: clinician.facilityName,
         status: clinician.status,
-        effective_from: clinician.effectiveFrom,
-        updated_at: clinician.updatedAt,
+        effective_from: formattedEffectiveFrom,
+        updated_at: formattedUpdatedAt,
         source_file: sourceFile,
         last_ingested_at: currentTimestamp
     };
@@ -76,7 +155,17 @@ public function insertClinicianData(json jsonContent, string sourceFile) returns
     
     // Process and insert each clinician record
     foreach Clinician clinician in clinicians {
-        ClinicianContact contactData = convertToClinicianContact(clinician, sourceFile);
+        ClinicianContact|error contactDataResult = convertToClinicianContact(clinician, sourceFile);
+        
+        if contactDataResult is error {
+            string errorMsg = string `Failed to convert clinician data for ${clinician.clinicianId}: ${contactDataResult.message()}`;
+            result.errors.push(errorMsg);
+            result.errorCount += 1;
+            io:println(string `✗ ${errorMsg}`);
+            continue;
+        }
+        
+        ClinicianContact contactData = contactDataResult;
         
         // Prepare INSERT statement
         sql:ParameterizedQuery insertQuery = `

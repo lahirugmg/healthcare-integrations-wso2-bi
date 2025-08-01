@@ -46,6 +46,8 @@ public function main() returns error? {
         return;
     }
 
+
+
     io:println("----------------------------------------");
 
     // Process each JSON file and insert data into database
@@ -82,7 +84,7 @@ public function main() returns error? {
             totalErrorCount += insertionResult.errorCount;
 
         } else {
-            io:println(string `✗ Failed to load: ${result.fileName}`);
+            
             string? errorMessage = result.errorMessage;
             string errorMsg = errorMessage ?: "Unknown error";
             io:println(string `Error: ${errorMsg}`);
