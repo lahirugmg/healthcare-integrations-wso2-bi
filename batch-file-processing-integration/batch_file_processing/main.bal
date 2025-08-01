@@ -2,12 +2,25 @@ import ballerina/ftp;
 import ballerina/io;
 import ballerina/lang.value as value;
 
-// Initialize FTP client at module level
-ftp:Client ftpClient = check new (getFtpClientConfig());
-
 public function main() returns error? {
     io:println("Starting batch JSON file processing from FTP location...");
-    io:println(string `FTP Server: ${ftpHost}:${ftpPort}`);
+    
+    // FTP client configuration with credentials from Config.toml
+    ftp:ClientConfiguration ftpConfig = {
+        protocol: ftp:FTP,
+        host: "localhost",
+        port: 2121,
+        auth: {
+            credentials: {
+                username: ftpUsername,
+                password: ftpPassword
+            }
+        }
+    };
+    
+    ftp:Client ftpClient = check new (clientConfig = ftpConfig);
+    
+    io:println("FTP Server: localhost:2121");
     io:println(string `Directory: ${ftpDirectory}`);
     io:println("----------------------------------------");
     
