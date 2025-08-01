@@ -1,4 +1,3 @@
-5) `sql/schema.sql` — **MySQL schema (medications for different patients)**
 ```sql
 CREATE DATABASE IF NOT EXISTS blueriver;
 USE blueriver;

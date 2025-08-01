@@ -1,4 +1,4 @@
-// Database configuration from Config.toml [db] section
+// Database configuration from Config.toml [healthcare_integration.healthcare_integration.db] section
 configurable DatabaseConfig db = ?;
 
 // Get database configuration

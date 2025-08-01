@@ -185,6 +185,9 @@ version = "0.0.0"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"}
 ]
+modules = [
+	{org = "ballerina", packageName = "lang.runtime", moduleName = "lang.runtime"}
+]
 
 [[package]]
 org = "ballerina"
@@ -347,15 +350,35 @@ modules = [
 ]
 
 [[package]]
+org = "ballerinax"
+name = "twilio"
+version = "5.0.0"
+dependencies = [
+	{org = "ballerina", name = "constraint"},
+	{org = "ballerina", name = "http"},
+	{org = "ballerina", name = "log"},
+	{org = "ballerina", name = "os"},
+	{org = "ballerina", name = "url"},
+	{org = "ballerinai", name = "observe"}
+]
+modules = [
+	{org = "ballerinax", packageName = "twilio", moduleName = "twilio"},
+	{org = "ballerinax", packageName = "twilio", moduleName = "twilio.mock"},
+	{org = "ballerinax", packageName = "twilio", moduleName = "twilio.oas"}
+]
+
+[[package]]
 org = "healthcare_integration"
 name = "healthcare_integration"
 version = "0.1.0"
 dependencies = [
 	{org = "ballerina", name = "http"},
+	{org = "ballerina", name = "lang.runtime"},
 	{org = "ballerina", name = "log"},
 	{org = "ballerina", name = "sql"},
 	{org = "ballerinai", name = "observe"},
-	{org = "ballerinax", name = "mysql"}
+	{org = "ballerinax", name = "mysql"},
+	{org = "ballerinax", name = "twilio"}
 ]
 modules = [
 	{org = "healthcare_integration", packageName = "healthcare_integration", moduleName = "healthcare_integration"}
