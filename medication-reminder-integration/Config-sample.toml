@@ -1,0 +1,25 @@
+# Sample configuration file for BlueRiver Medical Group - Medication Reminders
+# Copy this file to Config.toml and replace placeholder values with actual credentials
+
+# Database configuration for MySQL connection
+[healthcare_integration.db]
+host = "localhost"
+port = 3306
+user = "your_mysql_username"
+password = "your_mysql_password"
+database = "blueriver"
+
+# Twilio configuration for SMS sending
+[healthcare_integration.twilio]
+accountSid = "your_twilio_account_sid"
+authToken = "your_twilio_auth_token"
+fromNumber = "+1234567890"
+
+# Instructions:
+# 1. Copy this file to Config.toml
+# 2. Replace 'your_mysql_username' with your actual MySQL username
+# 3. Replace 'your_mysql_password' with your actual MySQL password
+# 4. Replace 'your_twilio_account_sid' with your Twilio Account SID
+# 5. Replace 'your_twilio_auth_token' with your Twilio Auth Token
+# 6. Replace '+1234567890' with your Twilio phone number in E.164 format
+# 7. Ensure Config.toml is added to your .gitignore file to protect credentials
