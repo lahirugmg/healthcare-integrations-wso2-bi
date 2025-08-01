@@ -1,0 +1,7 @@
+[package]
+org = "lahirus"
+name = "batch_file_processing"
+version = "0.1.0"
+
+[build-options]
+sticky = true
