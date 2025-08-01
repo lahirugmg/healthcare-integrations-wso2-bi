@@ -7,6 +7,14 @@ public type DatabaseConfig record {|
     string database;
 |};
 
+// Twilio configuration record
+public type TwilioConfig record {|
+    string accountSid;
+    string apiSecret;
+    string apiKey;
+    string fromNumber;
+|};
+
 
 // Zoom event payload structure for normalization - using open records
 public type ZoomEventPayload record {

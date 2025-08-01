@@ -143,13 +143,14 @@ isolated function initializeMysqlClient() returns mysql:Client|error {
 
 // Initialize Twilio client
 isolated function initializeTwilioClient() returns twilio:Client|error {
+    TwilioConfig twilioConfig = getTwilioConfig();
 
-    // Create proper Twilio authentication configuration
-    twilio:ConnectionConfig twilioConfig = {
+    // Initialize Twilio client with ApiKeyConfig
+    twilio:ConnectionConfig twilioConnectionConfig = {
         auth: {
-            apiKey: apiKey,
-            apiSecret: apiSecret,
-            accountSid: accountSid
+            apiKey: twilioConfig.apiKey,
+            apiSecret: twilioConfig.apiSecret,
+            accountSid: twilioConfig.accountSid
         }
     };
 
