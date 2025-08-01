@@ -1,0 +1,38 @@
+[
+  {
+    "clinicianId": "C1001",
+    "npi": "1234567890",
+    "firstName": "Asha",
+    "middleName": null,
+    "lastName": "Perera",
+    "email": "asha.perera@blueriver.org",
+    "phoneMobile": "+19015550011",
+    "phoneOffice": "+19015550009",
+    "pager": "5001",
+    "department": "Cardiology",
+    "specialty": "Interventional Cardiology",
+    "facilityCode": "BLR-MEM",
+    "facilityName": "BlueRiver Memphis",
+    "status": "ACTIVE",
+    "effectiveFrom": "2023-01-15",
+    "updatedAt": "2025-07-30T02:00:00Z"
+  },
+  {
+    "clinicianId": "C1005",
+    "npi": "3344556677",
+    "firstName": "Noah",
+    "middleName": null,
+    "lastName": "Williams",
+    "email": "noah.williams@blueriver.org",
+    "phoneMobile": "+19015550066",
+    "phoneOffice": "+19015550007",
+    "pager": "5006",
+    "department": "Orthopedics",
+    "specialty": "Sports Medicine",
+    "facilityCode": "BLR-GER",
+    "facilityName": "BlueRiver Germantown",
+    "status": "ACTIVE",
+    "effectiveFrom": "2025-07-29",
+    "updatedAt": "2025-07-30T02:00:00Z"
+  }
+]

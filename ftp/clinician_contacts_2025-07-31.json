@@ -1,0 +1,20 @@
+[
+  {
+    "clinicianId": "C1006",
+    "npi": "2211334455",
+    "firstName": "Maya",
+    "middleName": "R",
+    "lastName": "Nguyen",
+    "email": "maya.nguyen@blueriver.org",
+    "phoneMobile": "+19015550077",
+    "phoneOffice": "+19015550008",
+    "pager": "5007",
+    "department": "Emergency Medicine",
+    "specialty": "Trauma",
+    "facilityCode": "BLR-MEM",
+    "facilityName": "BlueRiver Memphis",
+    "status": "ACTIVE",
+    "effectiveFrom": "2025-07-31",
+    "updatedAt": "2025-07-31T02:00:00Z"
+  }
+]
