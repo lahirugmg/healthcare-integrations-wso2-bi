@@ -50,7 +50,7 @@ dependencies = [
 [[package]]
 org = "ballerina"
 name = "data.jsondata"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"},
 	{org = "ballerina", name = "lang.object"}
@@ -70,7 +70,7 @@ dependencies = [
 [[package]]
 org = "ballerina"
 name = "http"
-version = "2.14.2"
+version = "2.14.3"
 dependencies = [
 	{org = "ballerina", name = "auth"},
 	{org = "ballerina", name = "cache"},
@@ -283,10 +283,14 @@ modules = [
 [[package]]
 org = "ballerina"
 name = "task"
-version = "2.7.0"
+version = "2.11.0"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"},
-	{org = "ballerina", name = "time"}
+	{org = "ballerina", name = "time"},
+	{org = "ballerina", name = "uuid"}
+]
+modules = [
+	{org = "ballerina", packageName = "task", moduleName = "task"}
 ]
 
 [[package]]
@@ -296,6 +300,9 @@ version = "2.7.0"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"}
 ]
+modules = [
+	{org = "ballerina", packageName = "time", moduleName = "time"}
+]
 
 [[package]]
 org = "ballerina"
@@ -303,6 +310,17 @@ name = "url"
 version = "2.6.0"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"}
+]
+
+[[package]]
+org = "ballerina"
+name = "uuid"
+version = "1.10.0"
+dependencies = [
+	{org = "ballerina", name = "crypto"},
+	{org = "ballerina", name = "jballerina.java"},
+	{org = "ballerina", name = "lang.int"},
+	{org = "ballerina", name = "time"}
 ]
 
 [[package]]
@@ -371,6 +389,8 @@ dependencies = [
 	{org = "ballerina", name = "lang.runtime"},
 	{org = "ballerina", name = "log"},
 	{org = "ballerina", name = "sql"},
+	{org = "ballerina", name = "task"},
+	{org = "ballerina", name = "time"},
 	{org = "ballerinai", name = "observe"},
 	{org = "ballerinax", name = "mysql"},
 	{org = "ballerinax", name = "twilio"}

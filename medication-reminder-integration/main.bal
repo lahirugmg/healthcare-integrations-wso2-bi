@@ -1,13 +1,14 @@
 import ballerina/lang.runtime;
 import ballerina/log;
 import ballerina/sql;
+import ballerina/task;
+import ballerina/time;
 import ballerinax/mysql;
 import ballerinax/twilio;
 
 // Observability counters
 int totalReceived = 0;
 int totalInserted = 0;
-
 
 // Reference schema (for context only; do not execute in code)
 // Database: blueriver
@@ -19,6 +20,28 @@ final mysql:Client mysqlClient = check initializeMysqlClient();
 
 // Global Twilio client - initialized at module level
 final twilio:Client twilioClient = check initializeTwilioClient();
+
+// Medication Reminder Job class
+class MedicationReminderJob {
+    *task:Job;
+    int executionCount = 0;
+
+    // Executes this function when the scheduled trigger fires
+    public function execute() {
+        self.executionCount += 1;
+        log:printInfo(string `Medication Reminder Job execution #${self.executionCount} started`);
+        
+        do {
+            check processMedicationReminders();
+        } on fail error e {
+            log:printError("Error in medication reminder processing", 'error = e);
+        }
+    }
+
+    isolated function init() {
+        self.executionCount = 0;
+    }
+}
 
 // Initialize MySQL client with fail-fast behavior
 isolated function initializeMysqlClient() returns mysql:Client|error {
@@ -58,16 +81,22 @@ isolated function initializeTwilioClient() returns twilio:Client|error {
 public function main() returns error? {
     log:printInfo("Starting BlueRiver Medical Group - Medication Reminder Service");
 
-    // Start the scheduler loop
-    while true {
-        do {
-            check processMedicationReminders();
-        } on fail error e {
-            log:printError("Error in medication reminder processing", 'error = e);
-        }
+    // Gets the current time
+    time:Utc currentUtc = time:utcNow();
+    // Increases the time by 10 seconds to get the specified time for scheduling the first job
+    time:Utc newTime = time:utcAddSeconds(currentUtc, 10);
+    // Gets the time:Civil for the given time
+    time:Civil startTime = time:utcToCivil(newTime);
 
-        // Wait 5 minutes before next execution
-        runtime:sleep(300.0); // 300 seconds = 5 minutes
+    // Schedule the recurring job to run every 5 minutes (300 seconds)
+    // Using maxCount = -1 for unlimited executions
+    task:JobId jobId = check task:scheduleJobRecurByFrequency(new MedicationReminderJob(), 300, -1, startTime);
+    
+    log:printInfo("Medication reminder job scheduled to run every 5 minutes");
+
+    // Keep the main function running to allow scheduled jobs to execute
+    while true {
+        runtime:sleep(60); // Sleep for 1 minute intervals to keep the program alive
     }
 }
 
@@ -183,9 +212,7 @@ function processSingleReminder(DueReminder reminder) returns error? {
         Body: message
     };
 
-
     twilio:Message|error smsResponse = twilioClient->createMessage(smsRequest);
-        
 
     if smsResponse is error {
         string errorMessage = "Failed to send SMS: " + smsResponse.message();
@@ -206,7 +233,6 @@ function processSingleReminder(DueReminder reminder) returns error? {
     }
     
     log:printInfo("SMS sending process completed successfully");
-    
 
     // Update schedule status to SENT and calculate next dose time
     // check updateReminderSuccess(reminder, messageSid);
