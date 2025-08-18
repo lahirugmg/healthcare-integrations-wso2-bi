@@ -1,7 +1,14 @@
 import ballerina/ftp;
 import ballerina/io;
+import ballerina/task;
+import ballerina/lang.runtime;
+import ballerina/time;
 
-public function main() returns error? {
+// Prevent overlapping runs across scheduler ticks
+boolean isRunning = false;
+
+// === One full ingestion pass (moved from your old main()) ===
+public function runIngestionOnce() returns error? {
     io:println("Starting clinician contact data processing and database insertion...");
 
     // FTP client configuration with credentials from Config.toml
@@ -26,7 +33,6 @@ public function main() returns error? {
 
     // List files in the FTP directory
     ftp:FileInfo[]|ftp:Error fileListResult = ftpClient->list(path = ftpDirectory);
-
     if fileListResult is ftp:Error {
         string errorMsg = fileListResult.message();
         return error(string `Failed to list files from FTP directory: ${errorMsg}`);
@@ -45,8 +51,6 @@ public function main() returns error? {
         io:println("No JSON files found to process.");
         return;
     }
-
-
 
     io:println("----------------------------------------");
 
@@ -84,9 +88,7 @@ public function main() returns error? {
             totalErrorCount += insertionResult.errorCount;
 
         } else {
-            
-            string? errorMessage = result.errorMessage;
-            string errorMsg = errorMessage ?: "Unknown error";
+            string errorMsg = result.errorMessage ?: "Unknown error";
             io:println(string `Error: ${errorMsg}`);
             filesWithErrors += 1;
         }
@@ -103,9 +105,58 @@ public function main() returns error? {
     io:println(string `Total insertion errors: ${totalErrorCount}`);
     io:println("Clinician data processing and database insertion completed.");
 
-    // Close database connection
-    error? closeResult = dbClient.close();
-    if closeResult is error {
-        io:println(string `Warning: Failed to close database connection: ${closeResult.message()}`);
+    // IMPORTANT: Do NOT close the DB client here (keep it for the recurring job).
+    // Clean up FTP client for this run.
+}
+
+// === Scheduled job wrapper ===
+class IngestionJob {
+    *task:Job;
+
+    public function execute() {
+        io:println("");
+        io:println("⏰ Scheduled run fired at " + time:utcToString(time:utcNow()));
+
+        boolean shouldRun = false;
+        lock {
+            if !isRunning {
+                isRunning = true;
+                shouldRun = true;
+            }
+        }
+        if !shouldRun {
+            io:println("⏭️ Previous run still in progress; skipping this trigger.");
+            return;
+        }
+
+        error? e = runIngestionOnce();
+        if e is error {
+            io:println(string `✗ Scheduled run failed: ${e.message()}`);
+        } else {
+            io:println("✓ Scheduled run completed");
+        }
+
+        lock {
+            isRunning = false;
+        }
+    }
+}
+
+// === Scheduler entrypoint ===
+public function main() returns error? {
+    io:println("Scheduler starting: clinician ingestion every 1 hour.");
+
+    // Optional: bootstrap an immediate run on startup.
+    error? e = runIngestionOnce();
+    if e is error {
+        io:println(string `Initial run failed: ${e.message()}`);
+    }
+
+    // Recurring run every 3600 seconds (1 hour), forever (-1)
+    _ = check task:scheduleJobRecurByFrequency(new IngestionJob(), 3600, -1);
+
+    // Keep the service alive so the scheduler can fire.
+    while true {
+        runtime:sleep(9);
     }
 }
